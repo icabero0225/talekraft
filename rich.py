@@ -18,6 +18,8 @@ def remove_extension(text, chars=3):
 in_menu = False
 tabwidth = 8
 
+os.makedirs("Projects", exist_ok=True)
+
 root = Tk()
 root.overrideredirect(True)
 root.geometry("800x480+320+0")
@@ -33,7 +35,7 @@ project_view.pack(expand=True, fill=BOTH)
 current_font = "Garamond"
 
 # Set default font for the text widget
-default_font_size = 16
+default_font_size = 14
 default_font = (current_font, default_font_size)
 
 
@@ -48,6 +50,7 @@ def hide_chap_popup():
     add_new_chapter.place_forget()
     new_chapter_name.delete(0, END)
     cancel_add_new_chapter.place_forget()
+    new_chapter_error.place_forget()
     current_width = add_chap_popup.winfo_width()
     current_height = add_chap_popup.winfo_height()
 
@@ -56,7 +59,7 @@ def hide_chap_popup():
         new_width = max(current_width - 32/2, 1)
         new_height = max(current_height - 48/2, 1)
         add_chap_popup.config(width=new_width, height=new_height)
-        sidebar.after(10, hide_chap_popup)
+        sidebar.after(7, hide_chap_popup)
     else:
         in_menu = False
         add_chap_popup.config(width=0, height=0)
@@ -79,6 +82,7 @@ def add_chap_func():
 
     os.makedirs(os.path.join("Projects", current_project, new_chapter_name.get()))
     refresh_project_view()
+    add_new_chapter.focus_set()
     hide_chap_popup()
 
 def expand_chap_popup(message = ""):
@@ -95,7 +99,7 @@ def expand_chap_popup(message = ""):
             new_width = min(target_width, current_width + 32/2)
             new_height = min(target_height, current_height + 48/2)
             add_chap_popup.config(width=new_width, height=new_height)
-            sidebar.after(10, animate)
+            sidebar.after(7, animate)
         else:
             populate_chapter_popup()
     animate()
@@ -106,6 +110,7 @@ def hide_section_popup():
     add_new_section.place_forget()
     new_section_name.delete(0, END)
     cancel_add_new_section.place_forget()
+    new_section_error.place_forget()
 
     current_width = add_section_popup.winfo_width()
     current_height = add_section_popup.winfo_height()
@@ -115,7 +120,7 @@ def hide_section_popup():
         new_width = max(current_width - 32/2, 1)
         new_height = max(current_height - 48/2, 1)
         add_section_popup.config(width=new_width, height=new_height)
-        sidebar.after(10, hide_section_popup)
+        sidebar.after(7, hide_section_popup)
     else:
         in_menu = False
         add_section_popup.config(width=0, height=0)
@@ -143,6 +148,8 @@ def add_section_func():
         file.write("")
 
     refresh_project_view()
+    treeview.selection_set(f"{current_project}/{active_chap}")
+    treeview.focus(f"{current_project}/{active_chap}")
     hide_section_popup()
 
 def populate_chapter_popup(message = ""):
@@ -154,8 +161,8 @@ def populate_chapter_popup(message = ""):
     
     new_chapter_label.place(relx=0.5, rely=0.1, anchor="center")
     new_chapter_name.place(relx=0.5, rely=0.18, anchor="center")
-    add_new_chapter.place(relx=0.5, rely=0.34, anchor="center")
-    cancel_add_new_chapter.place(relx=0.5, rely=0.42, anchor="center")
+    add_new_chapter.place(relx=0.5, rely=0.36, anchor="center")
+    cancel_add_new_chapter.place(relx=0.5, rely=0.45, anchor="center")
     new_chapter_error.place(relx=0.5, rely=0.26, anchor="center")
     new_chapter_name.focus_set()
     new_chapter_error.config(text=message)
@@ -169,8 +176,8 @@ def populate_section_popup(message = ""):
 
     new_section_label.place(relx=0.5, rely=0.1, anchor="center")
     new_section_name.place(relx=0.5, rely=0.18, anchor="center")
-    add_new_section.place(relx=0.5, rely=0.34, anchor="center")
-    cancel_add_new_section.place(relx=0.5, rely=0.42, anchor="center")
+    add_new_section.place(relx=0.5, rely=0.36, anchor="center")
+    cancel_add_new_section.place(relx=0.5, rely=0.45, anchor="center")
     new_section_error.place(relx=0.5, rely=0.26, anchor="center")
     new_section_name.focus_set()
     new_section_error.config(text=message)
@@ -186,7 +193,7 @@ def ExpandSectionPopup():
         new_width = min(target_width, current_width + 32/2)
         new_height = min(target_height, current_height + 48/2)
         add_section_popup.config(width=new_width, height=new_height)
-        sidebar.after(10, ExpandSectionPopup)
+        sidebar.after(7, ExpandSectionPopup)
     else:        
         populate_section_popup()
 
@@ -200,6 +207,9 @@ add_chap = Button(project_view, text="New Chapter", command=expand_chap_popup)
 add_chap.pack(fill=BOTH)
 
 treeview = ttk.Treeview(project_view, selectmode="browse")
+style = ttk.Style()
+style.configure("Treeview", font=("Garamond", 12))
+style.configure("Treeview.Heading", font=("Garamond", 12))
 treeview.pack(expand=True, fill=BOTH)
 
 add_chap_popup = Frame(project_view, bg="#FFFFFF", width=0, height=0, highlightthickness=2, highlightbackground="#000000")
@@ -294,8 +304,6 @@ sidebar.bind("<Down>", change_focus)
 sidebar.bind("<Up>", lambda event: change_focus(event, False))
 
 current_project = "Project 1"
-
-chap_icon = PhotoImage(file="Assets/icon1.png")
 
 treeview.heading("#0", text=current_project)
 
