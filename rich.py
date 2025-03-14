@@ -22,11 +22,11 @@ os.makedirs("Projects", exist_ok=True)
 
 root = Tk()
 root.overrideredirect(True)
-root.geometry("800x480+320+0")
+root.geometry("800x480+345+25")
 
 sidebar = Toplevel()
 sidebar.overrideredirect(True)
-sidebar.geometry("320x480+0+0")
+sidebar.geometry("320x480+25+25")
 sidebar.option_add("*Font", "Garamond")
 
 project_view = Frame(sidebar)
@@ -200,16 +200,28 @@ def ExpandSectionPopup():
 def ExpandSectionProperties():
     print("View Section Properties")
 
-go_back = Button(project_view, text="< Projects", command=go_back_func)
+def SaveSection(event):
+    global buffer, active_section
+    with open(f"Projects/{os.path.normpath(active_section)}", "w", encoding="utf-8") as file:
+        file.write(buffer)
+
+def OpenSection():
+    global buffer, active_section
+    with open(f"Projects/{os.path.normpath(active_section)}", "r", encoding="utf-8") as file:
+        buffer = file.read()
+        set_screen_focus(False)
+    update_display()
+
+go_back = Button(project_view, text="< Projects", command=go_back_func, font=(default_font, 9, "bold"))
 go_back.pack(fill=BOTH)
 
-add_chap = Button(project_view, text="New Chapter", command=expand_chap_popup)
+add_chap = Button(project_view, text="New Chapter", command=expand_chap_popup, font=(default_font, 9, "bold"))
 add_chap.pack(fill=BOTH)
 
 treeview = ttk.Treeview(project_view, selectmode="browse")
 style = ttk.Style()
-style.configure("Treeview", font=("Garamond", 12))
-style.configure("Treeview.Heading", font=("Garamond", 12))
+style.configure("Treeview", font=("Garamond", 12, "bold"))
+style.configure("Treeview.Heading", font=("Garamond", 12, "bold"))
 treeview.pack(expand=True, fill=BOTH)
 
 add_chap_popup = Frame(project_view, bg="#FFFFFF", width=0, height=0, highlightthickness=2, highlightbackground="#000000")
@@ -235,6 +247,10 @@ new_section_error = Label(add_section_popup, fg="#000000", font=(default_font, 9
 
 can_go_up = False
 
+active_section = None
+last_sidebar_item = add_chap
+last_treeview_item = None
+
 def tree_selection_changed(event):
     global can_go_up
     items = treeview.get_children()
@@ -251,50 +267,66 @@ def unselect_treeview():
     for item in treeview.selection():
         treeview.selection_remove(item)
 
+def sidebar_focus(item):
+    global last_sidebar_item
+    item.focus_set()
+    last_sidebar_item = item
+    print(f"Sidebar Focus: {last_sidebar_item}")
+
+def treeview_focus(item):
+    global last_treeview_item
+    last_treeview_item = item
+    treeview.selection_set(last_treeview_item)
+    treeview.focus(item)
+    print(f"Treeview Focus: {last_treeview_item}")
+
 def change_focus(event, forward = True):
     current_focus = sidebar.focus_get();
     if current_focus == go_back:
         if forward:
-            add_chap.focus_set()
+            sidebar_focus(add_chap)
         else:
             return
     elif current_focus == add_chap:
         if forward:
             items = treeview.get_children()
             if items:
-                treeview.selection_set(items[0])
-                treeview.focus(items[0])
-                treeview.focus_set()
-        else:
-            go_back.focus_set()
+                sidebar_focus(treeview)
+                treeview_focus(items[0])
+        if not forward:
+            sidebar_focus(go_back)
     elif current_focus == treeview:
         if not forward:
             items = treeview.get_children()
             if treeview.focus() == items[0] and can_go_up:
                 unselect_treeview()
-                add_chap.focus_set()
+                sidebar_focus(add_chap)
+            elif treeview.focus() == items[0] and not can_go_up:
+                treeview_focus(items[0])
+        treeview_focus(treeview.selection()[0])
     elif current_focus == new_chapter_name:
         if forward:
-            add_new_chapter.focus_set()
+            last_sidebar_item = add_new_chapter
+            sidebar_focus(add_new_chapter)
     elif current_focus == add_new_chapter:
         if not forward:
-            new_chapter_name.focus_set()
+            sidebar_focus(new_chapter_name)
         if forward:
-            cancel_add_new_chapter.focus_set()
+            sidebar_focus(cancel_add_new_chapter)
     elif current_focus == cancel_add_new_chapter:
         if not forward:
-            add_new_chapter.focus_set()
+            sidebar_focus(add_new_chapter)
     elif current_focus == new_section_name:
         if forward:
-            add_new_section.focus_set()
+            sidebar_focus(add_new_section)
     elif current_focus == add_new_section:
         if not forward:
-            new_section_name.focus_set()
+            sidebar_focus(new_section_name)
         if forward:
-            cancel_add_new_section.focus_set()
+            sidebar_focus(cancel_add_new_section)
     elif current_focus == cancel_add_new_section:
         if not forward:
-            add_new_section.focus_set()
+            sidebar_focus(add_new_section)
     else:
         print("No Current Focus or No Implementation for Current Focus")
 
@@ -353,7 +385,9 @@ def return_pressed(event):
                 print(active_chap)
                 ExpandSectionPopup()
             elif "section" in treeview.item(selected_item, "tags"):
-                ExpandSectionProperties()
+                global active_section
+                active_section = f"{selected_item}"
+                OpenSection()
     elif current_focus == add_new_chapter or current_focus == new_chapter_name:
         add_new_chapter.config(relief=SUNKEN)
         add_new_chapter.invoke()
@@ -555,6 +589,8 @@ text.bind("<Control-b>", apply_bold)
 text.bind("<Control-i>", apply_italic)
 root.bind("<KeyPress>", key_press)
 text.bind("<Tab>", on_tab_press)
+text.bind("<Control-s>", SaveSection)
+sidebar.bind("<Control-s>", SaveSection)
 
 def set_screen_focus(is_text):
     if(in_menu):
@@ -562,7 +598,18 @@ def set_screen_focus(is_text):
     if not is_text:
         text.focus_set()
     if is_text:
-        add_chap.focus_set()
+        """if last_sidebar_item:
+            last_sidebar_item.focus_set()
+        else:
+            add_chap.focus_set()
+        print(f"Set Focus: {last_sidebar_item}")"""
+        if not last_sidebar_item:
+            print("No Last Sidebar Item!")
+        if last_sidebar_item != treeview:
+            last_sidebar_item.focus_set()
+        elif last_sidebar_item == treeview:
+            treeview.focus_set()
+            treeview.selection_set(last_treeview_item)
 
 sidebar.bind("<Alt_L>", lambda event: set_screen_focus(False))
 text.bind("<Alt_L>", lambda event: set_screen_focus(True))
