@@ -38,8 +38,6 @@ current_font = "Garamond"
 default_font_size = 14
 default_font = (current_font, default_font_size)
 
-
-
 """Sidebar Logic"""
 def go_back_func():
     print("Go Back")
@@ -55,7 +53,6 @@ def hide_chap_popup():
     current_height = add_chap_popup.winfo_height()
 
     if current_width > 1 and current_height > 1:
-        print(f"Current: {current_width}x{current_height}")
         new_width = max(current_width - 32/2, 1)
         new_height = max(current_height - 48/2, 1)
         add_chap_popup.config(width=new_width, height=new_height)
@@ -64,8 +61,14 @@ def hide_chap_popup():
         in_menu = False
         add_chap_popup.config(width=0, height=0)
 
-def add_chap_func():
+    print(active_chap)
+    if active_chap:
+        treeview_focus(next(chap for chap in chapters if chap.chapter == active_chap))
+    if not active_chap:
+        sidebar_focus(add_chap)
 
+def add_chap_func():
+    global active_chap
     for char in new_chapter_name.get():
         if char in unacceptable_file_chars:
             populate_chapter_popup(f"Invalid Char: {char}")
@@ -81,6 +84,8 @@ def add_chap_func():
             return
 
     os.makedirs(os.path.join("Projects", current_project, new_chapter_name.get()))
+    active_chap = new_chapter_name.get()
+    print(active_chap)
     refresh_project_view()
     add_new_chapter.focus_set()
     hide_chap_popup()
@@ -91,7 +96,6 @@ def expand_chap_popup(message = ""):
     target_height = 480 - 48*2.5
 
     def animate():
-        print(f"Current Width: {add_chap_popup.winfo_width()}, Target Width: {target_width}")
         current_width = add_chap_popup.winfo_width()
         current_height = add_chap_popup.winfo_height()
 
@@ -250,6 +254,7 @@ can_go_up = False
 active_section = None
 last_sidebar_item = add_chap
 last_treeview_item = None
+active_chap = None
 
 def tree_selection_changed(event):
     global can_go_up
@@ -271,7 +276,6 @@ def sidebar_focus(item):
     global last_sidebar_item
     item.focus_set()
     last_sidebar_item = item
-    print(f"Sidebar Focus: {last_sidebar_item}")
 
 def treeview_focus(item):
     global last_treeview_item
@@ -342,8 +346,6 @@ treeview.heading("#0", text=current_project)
 chapters = []
 sections = []
 
-active_chap = "Nothing"
-
 def refresh_project_view():
     chapters.clear()
     sections.clear()
@@ -363,7 +365,8 @@ def refresh_project_view():
 
     for section in sections:
         treeview.insert(f"{section.chapter.project}/{section.chapter.chapter}", END, iid=f"{section.chapter.project}/{section.chapter.chapter}/{section.section}", text=remove_extension(section.section), open=True, tags=("section"))
-
+    number_of_chaps = len(chapters)
+    print(number_of_chaps)
 refresh_project_view()
 
 def return_pressed(event):
@@ -478,7 +481,9 @@ def on_tab_press(event):
     return "break"
 
 def key_press(event):
-    global buffer
+    global buffer, active_section
+    if active_section == "None":
+        return
     if event.keysym == "BackSpace":
         if not buffer: #if buffer was empty
             return
@@ -598,11 +603,6 @@ def set_screen_focus(is_text):
     if not is_text:
         text.focus_set()
     if is_text:
-        """if last_sidebar_item:
-            last_sidebar_item.focus_set()
-        else:
-            add_chap.focus_set()
-        print(f"Set Focus: {last_sidebar_item}")"""
         if not last_sidebar_item:
             print("No Last Sidebar Item!")
         if last_sidebar_item != treeview:
@@ -613,6 +613,17 @@ def set_screen_focus(is_text):
 
 sidebar.bind("<Alt_L>", lambda event: set_screen_focus(False))
 text.bind("<Alt_L>", lambda event: set_screen_focus(True))
+
+def debug(event):
+    print("Debug: ")
+    print(f"Current Chap: {active_chap}")
+    for chap in chapters:
+        print(chap.chapter, end=" | ")
+    print()
+    return "break"
+
+root.bind("<Control-d>", debug)
+sidebar.bind("<Control-d>", debug)
 
 def Quit(event):
     exit(0)
